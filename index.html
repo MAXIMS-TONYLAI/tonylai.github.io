@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Facebook oEmbed Test</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Facebook SDK -->
+  <script>
+    window.fbAsyncInit = function() {
+      FB.init({
+        xfbml      : true,
+        version    : 'v25.0'
+      });
+    };
+  </script>
+  <script async defer crossorigin="anonymous" src="https://connect.facebook.net/zh_TW/sdk.js"></script>
+
+  <style>
+    /* 避免閃爍，增加一些簡單的過渡效果 */
+    #embed-container {
+      min-height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #f9fafb;
+      border: 1px dashed #d1d5db;
+      border-radius: 0.5rem;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans text-gray-800">
+
+  <div class="max-w-4xl mx-auto px-4 py-12">
+    <!-- Header -->
+    <header class="mb-8">
+      <h1 class="text-3xl font-bold text-blue-600 mb-2">Facebook oEmbed API Test</h1>
+      <p class="text-gray-600">Reviewer 測試頁面，展示如何使用 Meta Graph API 嵌入 Facebook 貼文。</p>
+    </header>
+
+    <!-- Control Panel -->
+    <section class="bg-white rounded-xl shadow-md p-6 mb-8 border border-gray-100">
+      <div class="flex flex-col gap-4">
+        <div>
+          <label for="post-url" class="block text-sm font-semibold text-gray-700 mb-1">Facebook Post URL:</label>
+          <input 
+            type="text" 
+            id="post-url" 
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+            value="https://www.facebook.com/permalink.php?story_fbid=pfbid02YEUSoBs4chibcQcuzgJDSkTzharuKXWhrEA5zuCaNAmbTRFzg5wQ7a9EQW2saSEzl&id=61590047376305&rdid=JEZgVhj4ORas9rtB#"
+            placeholder="請輸入 Facebook 貼文網址..."
+          >
+        </div>
+        
+        <div class="flex items-center gap-3">
+          <button 
+            id="load-btn" 
+            class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            載入貼文
+          </button>
+          <span id="status-indicator" class="text-sm font-medium text-gray-500 hidden">
+            <!-- 狀態提示 -->
+          </span>
+        </div>
+      </div>
+
+      <!-- Error Message Box -->
+      <div id="error-message" class="hidden mt-4 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-r-lg text-sm break-all">
+        <!-- 錯誤訊息內容 -->
+      </div>
+    </section>
+
+    <!-- Embed Output -->
+    <section>
+      <h2 class="text-lg font-semibold text-gray-700 mb-3">嵌入結果預覽：</h2>
+      <div id="embed-container" class="w-full overflow-x-auto">
+        <span class="text-gray-400">點擊上方按鈕載入貼文</span>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // 常數設定
+    const ACCESS_TOKEN = 'EAAUe0cqvEucBRmKswqyTAvHTOpFBZAZAd6JnuQoOqFttCgLFm4fi1NgaeOnHbTyOqJvAJcu3gHySmbzGrOXl2IaVIJsSvqiOrjhp0xOxZBKCx7pBiQD7mXX9HNhEwTnuAtKaN6GGkuzro3rmEGcuv2M41uhxLzeD7GBqhuVIgIFXsOzL7aoDwyWRiKCd8GXyv2UzV7NhegDS3H5lD6ZCRzHZAM0afZBYumxdKn0RggQozE5tjBbxZAoPVa9mbD9wQsxC9GlE4Lbr2li';
+    const GRAPH_API_VERSION = 'v25.0';
+    const ENDPOINT = `https://graph.facebook.com/${GRAPH_API_VERSION}/oembed_post`;
+
+    // DOM 元素
+    const urlInput = document.getElementById('post-url');
+    const loadBtn = document.getElementById('load-btn');
+    const embedContainer = document.getElementById('embed-container');
+    const errorBox = document.getElementById('error-message');
+    const statusIndicator = document.getElementById('status-indicator');
+
+    // 工具函式：顯示狀態
+    function setStatus(type, message) {
+      if (type === 'loading') {
+        loadBtn.disabled = true;
+        statusIndicator.innerHTML = `
+          <svg class="animate-spin inline-block h-4 w-4 mr-1 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          載入中...
+        `;
+        statusIndicator.classList.remove('hidden');
+        errorBox.classList.add('hidden');
+        embedContainer.innerHTML = '';
+      } else if (type === 'success') {
+        loadBtn.disabled = false;
+        statusIndicator.innerHTML = '<span class="text-green-600">✓ 載入成功</span>';
+        setTimeout(() => statusIndicator.classList.add('hidden'), 3000);
+      } else if (type === 'error') {
+        loadBtn.disabled = false;
+        statusIndicator.innerHTML = '<span class="text-red-500">✗ 載入失敗</span>';
+        errorBox.textContent = message;
+        errorBox.classList.remove('hidden');
+        embedContainer.innerHTML = '<span class="text-gray-400">無法載入貼文</span>';
+      }
+    }
+
+    // 主邏輯：抓取並渲染 oEmbed
+    async function loadFacebookPost() {
+      const url = urlInput.value.trim();
+      if (!url) {
+        setStatus('error', '請輸入有效的 Facebook 貼文網址。');
+        return;
+      }
+
+      setStatus('loading');
+
+      try {
+        // 建構 API 請求 URL
+        const apiUrl = new URL(ENDPOINT);
+        apiUrl.searchParams.append('url', url);
+        apiUrl.searchParams.append('access_token', ACCESS_TOKEN);
+        apiUrl.searchParams.append('omitscript', 'true'); // 重要：不拿 <script>，由我們的 SDK 解析
+
+        // 呼叫 Graph API
+        const response = await fetch(apiUrl.toString());
+        const data = await response.json();
+
+        // 檢查是否回傳錯誤
+        if (!response.ok || data.error) {
+          throw new Error(data.error?.message || `HTTP ${response.status}: API 請求失敗`);
+        }
+
+        // 檢查是否有 html 屬性
+        if (!data.html) {
+          throw new Error('API 成功回應，但未回傳 HTML 內容。');
+        }
+
+        // 寫入 HTML
+        embedContainer.innerHTML = data.html;
+
+        // 確保 FB SDK 已經載入，並重新解析剛插入的 DOM
+        if (typeof FB !== 'undefined' && FB.XFBML) {
+          // XFBML.parse 會尋找具有 fb-post 類別的元素並將其轉換為 iframe
+          FB.XFBML.parse(embedContainer, () => {
+             console.log('Facebook SDK 解析完成');
+          });
+          setStatus('success');
+        } else {
+          throw new Error('Facebook SDK 尚未準備好，請重新整理頁面再試。');
+        }
+
+      } catch (error) {
+        console.error('oEmbed Fetch Error:', error);
+        setStatus('error', `錯誤：${error.message}`);
+      }
+    }
+
+    // 事件監聽
+    loadBtn.addEventListener('click', loadFacebookPost);
+    
+    // 支援按 Enter 送出
+    urlInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        loadFacebookPost();
+      }
+    });
+
+  </script>
+</body>
+</html>
