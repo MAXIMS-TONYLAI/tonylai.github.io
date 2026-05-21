@@ -43,7 +43,21 @@
 
     <!-- Control Panel -->
     <section class="bg-white rounded-xl shadow-md p-6 mb-8 border border-gray-100">
-      <div class="flex flex-col gap-4">
+      <div class="flex flex-col gap-5">
+        
+        <!-- Access Token Input -->
+        <div>
+          <label for="access-token" class="block text-sm font-semibold text-gray-700 mb-1">Graph API Access Token:</label>
+          <input 
+            type="text" 
+            id="access-token" 
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition font-mono text-sm"
+            value="EAAUe0cqvEucBRmKswqyTAvHTOpFBZAZAd6JnuQoOqFttCgLFm4fi1NgaeOnHbTyOqJvAJcu3gHySmbzGrOXl2IaVIJsSvqiOrjhp0xOxZBKCx7pBiQD7mXX9HNhEwTnuAtKaN6GGkuzro3rmEGcuv2M41uhxLzeD7GBqhuVIgIFXsOzL7aoDwyWRiKCd8GXyv2UzV7NhegDS3H5lD6ZCRzHZAM0afZBYumxdKn0RggQozE5tjBbxZAoPVa9mbD9wQsxC9GlE4Lbr2li"
+            placeholder="請輸入您的 Access Token..."
+          >
+        </div>
+
+        <!-- Post URL Input -->
         <div>
           <label for="post-url" class="block text-sm font-semibold text-gray-700 mb-1">Facebook Post URL:</label>
           <input 
@@ -55,7 +69,7 @@
           >
         </div>
         
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3 mt-2">
           <button 
             id="load-btn" 
             class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -85,11 +99,11 @@
 
   <script>
     // 常數設定
-    const ACCESS_TOKEN = 'EAAUe0cqvEucBRmKswqyTAvHTOpFBZAZAd6JnuQoOqFttCgLFm4fi1NgaeOnHbTyOqJvAJcu3gHySmbzGrOXl2IaVIJsSvqiOrjhp0xOxZBKCx7pBiQD7mXX9HNhEwTnuAtKaN6GGkuzro3rmEGcuv2M41uhxLzeD7GBqhuVIgIFXsOzL7aoDwyWRiKCd8GXyv2UzV7NhegDS3H5lD6ZCRzHZAM0afZBYumxdKn0RggQozE5tjBbxZAoPVa9mbD9wQsxC9GlE4Lbr2li';
     const GRAPH_API_VERSION = 'v25.0';
     const ENDPOINT = `https://graph.facebook.com/${GRAPH_API_VERSION}/oembed_post`;
 
     // DOM 元素
+    const tokenInput = document.getElementById('access-token');
     const urlInput = document.getElementById('post-url');
     const loadBtn = document.getElementById('load-btn');
     const embedContainer = document.getElementById('embed-container');
@@ -126,6 +140,13 @@
     // 主邏輯：抓取並渲染 oEmbed
     async function loadFacebookPost() {
       const url = urlInput.value.trim();
+      const accessToken = tokenInput.value.trim();
+
+      if (!accessToken) {
+        setStatus('error', '請輸入 Access Token。');
+        return;
+      }
+
       if (!url) {
         setStatus('error', '請輸入有效的 Facebook 貼文網址。');
         return;
@@ -137,7 +158,7 @@
         // 建構 API 請求 URL
         const apiUrl = new URL(ENDPOINT);
         apiUrl.searchParams.append('url', url);
-        apiUrl.searchParams.append('access_token', ACCESS_TOKEN);
+        apiUrl.searchParams.append('access_token', accessToken);
         apiUrl.searchParams.append('omitscript', 'true'); // 重要：不拿 <script>，由我們的 SDK 解析
 
         // 呼叫 Graph API
@@ -178,11 +199,13 @@
     loadBtn.addEventListener('click', loadFacebookPost);
     
     // 支援按 Enter 送出
-    urlInput.addEventListener('keypress', (e) => {
+    const handleEnter = (e) => {
       if (e.key === 'Enter') {
         loadFacebookPost();
       }
-    });
+    };
+    urlInput.addEventListener('keypress', handleEnter);
+    tokenInput.addEventListener('keypress', handleEnter);
 
   </script>
 </body>
